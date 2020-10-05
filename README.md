@@ -288,3 +288,5 @@ If there's no `id` field, it will call GET ALL /trucks
 - Tighter integration with WebPack to automatically update /api/index.js when a new api file is created
 - Better integration with Websockets, so the server can pass the object directly in the message without forcing a request to the server
 - Integration with popular 3rd party API tools like Cognito
+- Automatically handle loading state through ui slice
+- Handle logout hook to clear state

@@ -1,8 +1,8 @@
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { combineReducers } from 'redux';
-import { createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../api/index';
+import api from '../api/api';
 
-export const Ruffle = {
+export default Ruffle = {
   create: sliceName => Ruffle.async(sliceName, 'create'),
   getMany: sliceName => Ruffle.async(sliceName, 'getMany'),
   getOne: sliceName => Ruffle.async(sliceName, 'getOne'),
@@ -14,30 +14,43 @@ export const Ruffle = {
       try {
         const response = await api[sliceName][eventName](params);
         return response;
-      } 
-      catch (err) {
+      } catch (err) {
         const errorResponse = {
           status: err.response.status,
           errorMessage: err.response.statusText,
           details: err.response.data.details ? err.response.data.details : err.response.data
         };
-        return errorResponse;
+
+        return thunkAPI.rejectWithValue(errorResponse);
       }
     });
   },
+  createSlice: (options) => {
+    const extraReducers = options.extraReducers;
+    Object.keys(extraReducers).forEach((key) => {
+      let action = key.substring(0, key.lastIndexOf("/")) + "/rejected";
+      extraReducers[action] = (state, action) => {
+        throw action.payload;
+      };
+      if (typeof options.logoutAction !== 'undefined') {
+        extraReducers[options.logoutAction] = (state, action) => {
+          state = undefined;
+        };
+      }
+    });
+    options.extraReducers = extraReducers;
+    return createSlice(options);
+  },
   unwrapAsyncResponse: response => {
     return { ...response.payload.data };
-  },
-  throwIfError: action => {
-    if (action && action.payload && action.payload.errorMessage && Object.keys(action.payload.errorMessage).length > 0) {
-      throw action.payload;
-    }
   },
 
   // functions to allow each slice to self-register as a reducer with the reduxStore
   registeredSlices: {},
   registerSlice: (sliceName, cb) => {
-    console.log('Registering slice', sliceName);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Registering slice', sliceName);
+    }
     Ruffle.registeredSlices[sliceName] = cb;
   },
   configureSlices: reduxStore => {
@@ -53,6 +66,8 @@ export const Ruffle = {
       reduxStore.currentReducers[sliceName] = slice.reducer;
       reduxStore.replaceReducer(combineReducers(reduxStore.currentReducers));
     }
+
+    // Need to add a reducer to each slice so they can clear themselves on logout
   },
 
   // functions for working with websockets

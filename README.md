@@ -7,42 +7,41 @@ Get rid of Redux and API boilerplate code.  Get up and running as quick as possi
 
 ` /store/slices/truck.js`
 ```javascript
-  import { createSlice } from '@reduxjs/toolkit';
-  import { Ruffle } from '../ruffle-redux';
+import Ruffle from '../ruffle-redux';
+import { logout } from './auth';
 
-  // slice constants
-  const sliceName = 'truck';
+// slice constants
+const sliceName = 'truck';
 
-  // slice actions
-  export const createTruckAction = Ruffle.create(sliceName);
-  export const getTrucksAction = Ruffle.getMany(sliceName);
-  export const getTruckAction = Ruffle.getOne(sliceName);
+// slice actions
+export const createTruckAction = Ruffle.create(sliceName);
+export const getTrucksAction = Ruffle.getMany(sliceName);
+export const getTruckAction = Ruffle.getOne(sliceName);
 
-  // slice reducers
-  export const truckSlice = createSlice({
-    name: sliceName,
-    initialState: { allTrucks: [], truck: {} },
-    reducers: {},
-    extraReducers: {
-      [createTruckAction.fulfilled]: (state, action) => {
-        Ruffle.throwIfError(action);
-        state.truck = action.payload.data;
-        state.allTrucks.push(action.payload.data);
-      },
-      [getTrucksAction.fulfilled]: (state, action) => {
-        Ruffle.throwIfError(action);
-        state.allTrucks = action.payload.data;
-      },
-      [getTruckAction.fulfilled]: (state, action) => {
-        Ruffle.throwIfError(action);
-        state.truck = action.payload.data;
-      }
-  });
+// slice reducers
+export const truckSlice = Ruffle.createSlice({
+  name: sliceName,
+  logoutAction: logout.fulfilled,
+  initialState: { allTrucks: [], truck: {} },
+  reducers: {},
+  extraReducers: {
+    [createTruckAction.fulfilled]: (state, action) => {
+      state.truck = action.payload.data;
+      state.allTrucks.push(action.payload.data);
+    },
+    [getTrucksAction.fulfilled]: (state, action) => {
+      state.allTrucks = action.payload.data;
+    },
+    [getTruckAction.fulfilled]: (state, action) => {
+      state.truck = action.payload.data;
+    }
+  }
+});
 
-  Ruffle.registerSlice(sliceName, reduxStore => {
-    Ruffle.registerReducer(reduxStore, sliceName, truckSlice);
-    Ruffle.addWebsocketListener(reduxStore, sliceName, getTrucksAction, getTruckAction);
-  });
+Ruffle.registerSlice(sliceName, reduxStore => {
+  Ruffle.registerReducer(reduxStore, sliceName, truckSlice);
+  Ruffle.addWebsocketListener(reduxStore, sliceName, getTrucksAction, getTruckAction);
+});
 ```
 
 ` /api/truck.js`
@@ -131,7 +130,6 @@ And the response will be reduced in the code in your slice definition
 
 ```javascript
   [assignTruckAction.fulfilled]: (state, action) => {
-      Ruffle.throwIfError(action);
       state.truck = action.payload.data;
       state.allTrucks.push(action.payload.data);
     },
@@ -283,7 +281,6 @@ If there's no `id` field, it will call GET ALL /trucks
 *This is our current area of work, so we are hoping to expand this functionality soon *
 
 # What Else is Coming?
-- Better error handling.  Redux-Toolkit swallows errors in fulfilled, need a better way to extract them and throw them
 - Tighter integration with WebPack to automatically update /stores/slices/index.js when a new slice file is created
 - Tighter integration with WebPack to automatically update /api/index.js when a new api file is created
 - Better integration with Websockets, so the server can pass the object directly in the message without forcing a request to the server

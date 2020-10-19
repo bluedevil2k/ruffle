@@ -97,14 +97,16 @@ Example
 
 **Recommended Folders**
 
-`/api`
-`---index.js`
-`---truck.js`
+```javascript
+  /api
+    ---index.js
+    ---truck.js
 
-`/store`
-`---/slices`
-`    ---index.js`
-`    ---truck.js`
+  /store
+    ---/slices
+    ---index.js
+    ---truck.js
+```
 
 
 

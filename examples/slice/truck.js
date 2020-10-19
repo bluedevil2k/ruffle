@@ -1,5 +1,4 @@
 import Ruffle from '../ruffle-redux';
-import { logout } from './auth';
 
 // slice constants
 const sliceName = 'truck';
@@ -14,7 +13,7 @@ export const updateTruckAction = Ruffle.update(sliceName);
 // slice reducers
 export const truckSlice = Ruffle.createSlice({
   name: sliceName,
-  logoutAction: logout.fulfilled,
+  logoutAction: "auth/logout",
   initialState: { allTrucks: [], truck: {} },
   reducers: {},
   extraReducers: {

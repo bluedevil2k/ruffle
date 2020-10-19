@@ -3,16 +3,25 @@ import { combineReducers } from 'redux';
 import api from '../api/api';
 
 export default Ruffle = {
-  create: sliceName => Ruffle.async(sliceName, 'create'),
-  getMany: sliceName => Ruffle.async(sliceName, 'getMany'),
-  getOne: sliceName => Ruffle.async(sliceName, 'getOne'),
-  delete: sliceName => Ruffle.async(sliceName, 'delete'),
-  update: sliceName => Ruffle.async(sliceName, 'update'),
-  patch: sliceName => Ruffle.async(sliceName, 'patch'),
+  create: (sliceName) => Ruffle.async(sliceName, 'create'),
+  getMany: (sliceName) => Ruffle.async(sliceName, 'getMany'),
+  getOne: (sliceName) => Ruffle.async(sliceName, 'getOne'),
+  delete: (sliceName) => Ruffle.async(sliceName, 'delete'),
+  update: (sliceName) => Ruffle.async(sliceName, 'update'),
+  patch: (sliceName) => Ruffle.async(sliceName, 'patch'),
   async: (sliceName, eventName) => {
     return createAsyncThunk(`${sliceName}/${eventName}`, async (params, thunkAPI) => {
       try {
+        if (Ruffle.processingActions.processingStarted) {
+          thunkAPI.dispatch(Ruffle.processingActions.processingStarted);
+        }
+
         const response = await api[sliceName][eventName](params);
+
+        if (Ruffle.processingActions.processingComplete) {
+          thunkAPI.dispatch(Ruffle.processingActions.processingComplete);
+        }
+
         return response;
       } catch (err) {
         const errorResponse = {
@@ -20,6 +29,10 @@ export default Ruffle = {
           errorMessage: err.response.statusText,
           details: err.response.data.details ? err.response.data.details : err.response.data
         };
+        
+        if (Ruffle.processingActions.processingComplete) {
+          thunkAPI.dispatch(Ruffle.processingActions.processingComplete);
+        }
 
         return thunkAPI.rejectWithValue(errorResponse);
       }
@@ -28,12 +41,18 @@ export default Ruffle = {
   createSlice: (options) => {
     const extraReducers = options.extraReducers;
     Object.keys(extraReducers).forEach((key) => {
-      let action = key.substring(0, key.lastIndexOf("/")) + "/rejected";
-      extraReducers[action] = (state, action) => {
-        throw action.payload;
-      };
+      let action = key.substring(0, key.lastIndexOf("/"));
+      
+      // inject the rejected state and make it throw an error
+      if (typeof extraReducers[action + "/rejected"] === "undefined") {
+        extraReducers[action] = (state, action) => {
+          throw action.payload;
+        };
+      }
+
+      // clear the state on logout, if the logout.fulfilled is passed in
       if (typeof options.logoutAction !== 'undefined') {
-        extraReducers[options.logoutAction] = (state, action) => {
+        extraReducers[options.logoutAction + "/fulfilled"] = (state, action) => {
           state = undefined;
         };
       }
@@ -66,8 +85,12 @@ export default Ruffle = {
       reduxStore.currentReducers[sliceName] = slice.reducer;
       reduxStore.replaceReducer(combineReducers(reduxStore.currentReducers));
     }
+  },
 
-    // Need to add a reducer to each slice so they can clear themselves on logout
+  processingActions: {},
+  registerProcessingActions: (processingStarted, processingComplete) => {
+    Ruffle.processingActions.processingStarted = processingStarted;
+    Ruffle.processingActions.processingComplete = processingComplete;
   },
 
   // functions for working with websockets

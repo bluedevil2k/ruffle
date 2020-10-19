@@ -8,7 +8,7 @@ Get rid of Redux and API boilerplate code.  Get up and running as quick as possi
 ` /store/slices/truck.js`
 ```javascript
 import Ruffle from '../ruffle-redux';
-import { logout } from './auth';
+import { processingStarted, processingComplete } from './ui';
 
 // slice constants
 const sliceName = 'truck';
@@ -21,7 +21,7 @@ export const getTruckAction = Ruffle.getOne(sliceName);
 // slice reducers
 export const truckSlice = Ruffle.createSlice({
   name: sliceName,
-  logoutAction: logout.fulfilled,
+  logoutAction: "auth/logout",
   initialState: { allTrucks: [], truck: {} },
   reducers: {},
   extraReducers: {
@@ -38,8 +38,10 @@ export const truckSlice = Ruffle.createSlice({
   }
 });
 
+// register the slice with Ruffle
 Ruffle.registerSlice(sliceName, reduxStore => {
   Ruffle.registerReducer(reduxStore, sliceName, truckSlice);
+  Ruffle.registerProcessingActions(processingStarted, processingComplete);
   Ruffle.addWebsocketListener(reduxStore, sliceName, getTrucksAction, getTruckAction);
 });
 ```

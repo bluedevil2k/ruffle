@@ -104,8 +104,8 @@ Example
 
   /store
     ---/slices
-    ---index.js
-    ---truck.js
+      ---index.js
+      ---truck.js
 ```
 
 

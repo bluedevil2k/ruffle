@@ -45,19 +45,21 @@ export default Ruffle = {
       
       // inject the rejected state and make it throw an error
       if (typeof extraReducers[action + "/rejected"] === "undefined") {
-        extraReducers[action] = (state, action) => {
+        extraReducers[action + "/rejected"] = (state, action) => {
           throw action.payload;
         };
       }
-
-      // clear the state on logout, if the logout.fulfilled is passed in
-      if (typeof options.logoutAction !== 'undefined') {
-        extraReducers[options.logoutAction + "/fulfilled"] = (state, action) => {
-          state = undefined;
-        };
-      }
     });
+    
+    // clear the state on logout, if the logout action is passed in
+    if (typeof options.logoutAction !== 'undefined') {
+      extraReducers[options.logoutAction + "/fulfilled"] = (state, action) => {
+        state = undefined;
+      };
+    }
+    
     options.extraReducers = extraReducers;
+
     return createSlice(options);
   },
   unwrapAsyncResponse: response => {

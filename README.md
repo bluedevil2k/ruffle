@@ -95,21 +95,18 @@ Example
   }
 ```
 
-**API file**
+**Recommended Folders**
 
-Recommendation: Each endpoint group should be in its own file, for example `/api/truck.js`
+`/api`
+`---index.js`
+`---truck.js`
 
-**Store folder**
+`/store`
+`---/slices`
+`    ---index.js`
+`    ---truck.js`
 
-Recommendation: Put your Redux set-up files in a folder called `/store`
 
-**Slices folder**
-
-Recommendation: Put your individual slice files in a folder within the Store folder, for example `/store/slices`
-
-**Slice file**
-
-Recommendation: Call each individual slice file the same as the slice name.  For example, the `truck` slice should be defined within the `/store/slices/truck.js` file.
 
 ## Creating a Slice
 Ruffle makes creating a slice easy by building on the existing Redux-Toolkit's `createSlice()` function.  
@@ -156,6 +153,35 @@ To ensure your slice is registered with the Redux Store, this must be called wit
 
 Why do you need to register your slice, you might ask?  It fits with my design goal to change as few files as possible when adding a new slice.  It also
 allows me to build future functionality into the slices as this project expands without having to make breaking changes.
+
+
+## Handling API Errors
+
+Ruffle automatically injects the "/rejected" reducer into your slices for each action to handle the errors which lets you keep a clean Slice definition
+and continue to write your UI code with try/catch blocks.
+
+So, when you create a reducer like this
+
+```javascript
+  [getTrucksAction.fulfilled]: (state, action) => {
+    state.allTrucks = action.payload.data;
+  }
+```
+
+Ruffle will automatically search for the reducer [getTrucksAction.rejected].  If there isn't one present, Ruffle will create a reducer for [getTrucksAction.rejected] that will handle the errors and throw them for you.
+
+This allows you to write clean UI code like this
+
+```javascript
+   try {
+     const response = await dispatch(getTrucksAction());
+     const trucks = Ruffle.unwrapAsyncResponse(response);
+   }
+   catch (err) {
+     console.log("ERR", err);
+   }
+```
+
 
 ## Redux setup
 
@@ -245,13 +271,66 @@ Note - Ruffle looks in your .env files for the {your API path} variables
 
 # Bonus
 
+## Slice Clear Out on Logout
+
+It's best practice to clear out your Redux store when the user logs out.  This ensures that store values are not present
+in any Redux debug tools in the browser after a user logs out.
+
+Ruffle makes this easy by automatically clearing the slice values when a user logs out - simply pass in the logout action to the `Ruffle.createSlice()` function and Ruffle will append the "/fulfilled".  When a user logs out, the slice will be set to `undefined` by Ruffle.
+
+```javascript
+  export const truckSlice = Ruffle.createSlice({
+  name: sliceName,
+  logoutAction: "auth/logout", // this should match the action in your app
+```
+
+## Toggle 'processing' during API calls
+
+Often in an app you want to display some UI feedback when the application is processing or querying the server.  The UI code can then
+show a spinner or placeholder or some indication that information is forthcoming.
+
+Ruffle automates this as well by dispatching through Redux the start of processing and the completion of processing.  The UI code can then react to the changes in this value.  How the UI handles the processing is up to you.
+
+```javascript
+  // In your UI slice, where you track things like processing, loading, sidebar expanded/contracted, etc.
+  // This is example code, your UI slice may look different
+  export const uiSlice = createSlice({
+    name: 'ui',
+    initialState: { isProcessing: false },
+    reducers: {
+      processingStarted: (state, action) => {
+        state.isProcessing = true;
+      },
+      processingCompleted: (state, action) => {
+        state.isProcessing = false;
+      }
+    }
+  });
+
+  Ruffle.registerSlice(sliceName, reduxStore => {
+    Ruffle.registerProcessingActions(uiSlice.actions.processingStarted, uiSlice.actions.processingComplete);
+  });
+```
+
+```javascript
+  // example code which may appear in your UI components
+  const { isProcessing } = this.props;
+  if (isProcessing) {
+    return <Placeholder>;
+  }
+  else {
+    return <div>Welcome!<div>;
+  }
+```
+
+
+
 ## Tying it to WebSockets
 
-As we built our app out, we wanted to use Websockets to keep the UI up-to-date with the database.  We found that we had an opportunity
-to integrate the Websocket functionality directly into our Ruffle slices, and allow the Stores and Slices to get updated automatically
-from Websocket messages.
+Websockets are a natural extension of the Ruffle functionality.  As messages are pushed from the server via Websockets, we can tie that
+into our dispatch and reducer set-up.
 
-Just register your slice with Ruffle as a Websocket listener, passing in the GET and GET ALl functions
+Just register your slice with Ruffle as a Websocket listener, passing in the GET and GET ALL functions
 
 ```javascript
   Ruffle.registerSlice(sliceName, reduxStore => {
@@ -286,6 +365,3 @@ If there's no `id` field, it will call GET ALL /trucks
 - Tighter integration with WebPack to automatically update /stores/slices/index.js when a new slice file is created
 - Tighter integration with WebPack to automatically update /api/index.js when a new api file is created
 - Better integration with Websockets, so the server can pass the object directly in the message without forcing a request to the server
-- Integration with popular 3rd party API tools like Cognito
-- Automatically handle loading state through ui slice
-- Handle logout hook to clear state
